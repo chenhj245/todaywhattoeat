@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>购物清单 - KitchenMind</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航 -->
+        <nav class="nav-bar">
+            <div class="nav-title">🍳 KitchenMind</div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">聊天</a>
+                <a href="kitchen.html" class="nav-link">厨房</a>
+                <a href="shopping.html" class="nav-link active">购物</a>
+            </div>
+        </nav>
+
+        <!-- 购物清单 -->
+        <div class="shopping-container">
+            <!-- 顶部操作 -->
+            <div class="shopping-header">
+                <h2>🛒 购物清单</h2>
+                <div class="shopping-actions">
+                    <button class="suggest-btn" onclick="loadSuggestions()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        推荐菜品
+                    </button>
+                    <button class="refresh-btn" onclick="loadShoppingList()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M23 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M1 20v-6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        刷新
+                    </button>
+                </div>
+            </div>
+
+            <!-- 菜谱推荐区 -->
+            <div class="suggestions-section" id="suggestionsSection" style="display: none;">
+                <div class="section-header">
+                    <h3>💡 推荐菜品</h3>
+                    <button class="close-btn" onclick="closeSuggestions()">×</button>
+                </div>
+                <div class="suggestions-list" id="suggestionsList">
+                    <!-- 动态填充 -->
+                </div>
+            </div>
+
+            <!-- 计划菜品区 -->
+            <div class="planned-meals-section">
+                <h3>📝 计划做的菜</h3>
+                <div class="meal-tags" id="plannedMealTags">
+                    <div class="empty-state">暂无计划菜品</div>
+                </div>
+                <div class="add-meal-form">
+                    <input
+                        type="text"
+                        id="mealInput"
+                        placeholder="输入菜名..."
+                        class="meal-input"
+                    />
+                    <button class="add-meal-btn" onclick="addPlannedMeal()">添加</button>
+                </div>
+            </div>
+
+            <!-- 购物清单区 -->
+            <div class="shopping-list-section">
+                <h3>🛍️ 需要采购的食材</h3>
+                <div class="shopping-items" id="shoppingItems">
+                    <div class="empty-state">暂无需要采购的食材</div>
+                </div>
+                <div class="shopping-hint">
+                    提示：添加计划菜品后，系统会自动计算需要采购的食材
+                </div>
+            </div>
+
+            <!-- 加载状态 -->
+            <div class="loading-state" id="loadingState" style="display: none;">
+                <div class="spinner"></div>
+                <p>加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="shopping.js"></script>
+</body>
+</html>

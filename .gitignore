@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# Virtual env
+venv/
+.venv/
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# Runtime data
+logs/
+*.log
+data/kitchenmind.db
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Build
+dist/
+build/

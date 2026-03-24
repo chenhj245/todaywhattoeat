@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KitchenMind - 厨房助手</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航 -->
+        <nav class="nav-bar">
+            <div class="nav-title">🍳 KitchenMind</div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link active">聊天</a>
+                <a href="kitchen.html" class="nav-link">厨房</a>
+                <a href="shopping.html" class="nav-link">购物</a>
+            </div>
+        </nav>
+
+        <!-- 聊天主容器 -->
+        <div class="chat-container">
+            <!-- 消息列表 -->
+            <div class="messages" id="messageList">
+                <div class="welcome-message">
+                    <h2>👋 你好！我是你的厨房助手</h2>
+                    <p>告诉我你买了什么、做了什么菜，我会帮你记录和管理厨房库存。</p>
+                    <div class="quick-actions">
+                        <button class="quick-btn" onclick="sendQuickMessage('冰箱里还有什么')">📦 查看库存</button>
+                        <button class="quick-btn" onclick="sendQuickMessage('今晚吃什么')">🍽️ 推荐菜品</button>
+                        <button class="quick-btn" onclick="sendQuickMessage('缺什么要买')">🛒 购物清单</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-area">
+                <div class="input-container">
+                    <textarea
+                        id="userInput"
+                        class="user-input"
+                        placeholder="告诉我你买了什么，或者问我今天吃什么..."
+                        rows="1"
+                    ></textarea>
+                    <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-hint">
+                    按 Enter 发送，Shift+Enter 换行
+                </div>
+            </div>
+        </div>
+
+        <!-- 撤销按钮（浮动） -->
+        <button id="undoBtn" class="undo-btn" onclick="undoLastAction()" style="display: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M3 7v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            撤销
+        </button>
+    </div>
+
+    <script src="chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>厨房概览 - KitchenMind</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航 -->
+        <nav class="nav-bar">
+            <div class="nav-title">🍳 KitchenMind</div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">聊天</a>
+                <a href="kitchen.html" class="nav-link active">厨房</a>
+                <a href="shopping.html" class="nav-link">购物</a>
+            </div>
+        </nav>
+
+        <!-- 厨房概览 -->
+        <div class="kitchen-container">
+            <!-- 顶部摘要 -->
+            <div class="kitchen-summary">
+                <div class="summary-card">
+                    <div class="summary-icon">📦</div>
+                    <div class="summary-info">
+                        <div class="summary-label">总计</div>
+                        <div class="summary-value" id="totalItems">-</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon">✅</div>
+                    <div class="summary-info">
+                        <div class="summary-label">充足</div>
+                        <div class="summary-value" id="highItems">-</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon">⚠️</div>
+                    <div class="summary-info">
+                        <div class="summary-label">不确定</div>
+                        <div class="summary-value" id="mediumItems">-</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon">❗</div>
+                    <div class="summary-info">
+                        <div class="summary-label">可能没了</div>
+                        <div class="summary-value" id="lowItems">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 刷新按钮 -->
+            <div class="kitchen-actions">
+                <button class="refresh-btn" onclick="loadKitchenState()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M23 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M1 20v-6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    刷新
+                </button>
+            </div>
+
+            <!-- 食材列表 -->
+            <div class="kitchen-sections">
+                <!-- 高置信度 -->
+                <div class="kitchen-section">
+                    <div class="section-header">
+                        <h3>✅ 充足的食材</h3>
+                        <span class="section-count" id="highCount">0</span>
+                    </div>
+                    <div class="items-grid" id="highConfidenceItems">
+                        <div class="empty-state">暂无食材</div>
+                    </div>
+                </div>
+
+                <!-- 中置信度 -->
+                <div class="kitchen-section">
+                    <div class="section-header">
+                        <h3>⚠️ 不太确定的</h3>
+                        <span class="section-count" id="mediumCount">0</span>
+                    </div>
+                    <div class="items-grid" id="mediumConfidenceItems">
+                        <div class="empty-state">暂无食材</div>
+                    </div>
+                </div>
+
+                <!-- 低置信度 -->
+                <div class="kitchen-section">
+                    <div class="section-header">
+                        <h3>❗ 可能没了的</h3>
+                        <span class="section-count" id="lowCount">0</span>
+                    </div>
+                    <div class="items-grid" id="lowConfidenceItems">
+                        <div class="empty-state">暂无食材</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 加载状态 -->
+            <div class="loading-state" id="loadingState" style="display: none;">
+                <div class="spinner"></div>
+                <p>加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="kitchen.js"></script>
+</body>
+</html>
