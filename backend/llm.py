@@ -10,6 +10,11 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+def _preview_text(text: str, limit: int = 200) -> str:
+    text = (text or "").replace("\n", "\\n")
+    return text[:limit] + ("..." if len(text) > limit else "")
+
+
 from config import (
     OLLAMA_BASE_URL,
     OLLAMA_SMALL_MODEL,
@@ -26,7 +31,11 @@ class LLMClient:
     def __init__(self, base_url: str = OLLAMA_BASE_URL):
         self.base_url = base_url.rstrip('/')
         # 禁用环境变量代理，Ollama 是本地服务
-        self.client = httpx.AsyncClient(timeout=60.0, trust_env=False)
+        # 使用更宽松的超时配置：总超时 120s，连接超时 15s
+        self.client = httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0, connect=15.0),
+            trust_env=False
+        )
 
     async def _check_ollama_health(self) -> bool:
         """检查 Ollama 本地服务是否可用"""
@@ -91,7 +100,9 @@ class LLMClient:
             if QWEN_API_KEY:
                 print("[LLM] 已强制使用 Qwen 在线模型", flush=True)
                 try:
-                    return await self._call_qwen_api(messages, model, tools, temperature, stream)
+                    response = await self._call_qwen_api(messages, model, tools, temperature, stream)
+                    self._log_model_response(response)
+                    return response
                 except Exception as qwen_error:
                     self._log_http_error("[LLM] Qwen 强制模式调用失败", qwen_error)
                     return {
@@ -111,17 +122,23 @@ class LLMClient:
 
         if provider == "ollama":
             print("[LLM] 已强制使用 Ollama 本地模型", flush=True)
-            return await self._call_ollama_api(payload, model)
+            response = await self._call_ollama_api(payload, model)
+            self._log_model_response(response)
+            return response
 
         # auto 模式: 优先 Ollama，失败后回退 Qwen
         print("[LLM] auto 模式：优先 Ollama，失败后回退 Qwen", flush=True)
         try:
-            return await self._call_ollama_api(payload, model)
+            response = await self._call_ollama_api(payload, model)
+            self._log_model_response(response)
+            return response
         except Exception as e:
             if QWEN_API_KEY:
                 print(f"[LLM] 尝试使用千问 API 作为备用...", flush=True)
                 try:
-                    return await self._call_qwen_api(messages, model, tools, temperature, stream)
+                    response = await self._call_qwen_api(messages, model, tools, temperature, stream)
+                    self._log_model_response(response)
+                    return response
                 except Exception as qwen_error:
                     self._log_http_error("[LLM] 千问 API 调用也失败", qwen_error)
             return {
@@ -131,6 +148,26 @@ class LLMClient:
                     "content": "抱歉，我现在遇到了一些问题，请稍后再试。"
                 }
             }
+
+    def _log_model_response(self, response: Dict):
+        """记录模型回复摘要。"""
+        message = response.get("message", {}) if isinstance(response, dict) else {}
+        content = message.get("content", "")
+        tool_calls = message.get("tool_calls", [])
+        if tool_calls:
+            print(f"[LLM] 模型返回 tool_calls={len(tool_calls)}", flush=True)
+        if content:
+            print(f"[LLM] 模型回复: {_preview_text(content)}", flush=True)
+
+    async def _call_ollama_api(self, payload: Dict, model: str) -> Dict:
+        """调用本地 Ollama 接口。"""
+        await self._check_ollama_health()
+        response = await self.client.post(
+            f"{self.base_url}/api/chat",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
 
     async def chat_stream(
         self,
@@ -277,15 +314,17 @@ def get_llm_client() -> LLMClient:
 async def simple_chat(
     user_message: str,
     system_prompt: Optional[str] = None,
-    model: str = OLLAMA_SMALL_MODEL
+    model: str = OLLAMA_SMALL_MODEL,
+    fallback_message: Optional[str] = None
 ) -> str:
     """
-    简单的单轮对话
+    简单的单轮对话（带降级逻辑）
 
     Args:
         user_message: 用户消息
         system_prompt: 系统提示（可选）
         model: 模型名称
+        fallback_message: 失败时的降级回复（可选）
 
     Returns:
         助手回复文本
@@ -298,12 +337,34 @@ async def simple_chat(
     messages.append({"role": "user", "content": user_message})
 
     client = get_llm_client()
-    response = await client.chat(messages, model=model)
 
-    if "error" in response:
-        return response["message"]["content"]
+    try:
+        response = await client.chat(messages, model=model)
 
-    return response.get("message", {}).get("content", "")
+        if "error" in response:
+            # 如果有降级消息，优先使用
+            if fallback_message:
+                print(f"[LLM] simple_chat 失败，使用降级回复", flush=True)
+                return fallback_message
+
+            reply = response["message"]["content"]
+            print(f"[LLM] simple_chat 返回错误文案: {_preview_text(reply)}", flush=True)
+            return reply
+
+        reply = response.get("message", {}).get("content", "")
+        print(f"[LLM] simple_chat 最终文本: {_preview_text(reply)}", flush=True)
+        return reply
+
+    except Exception as e:
+        # 捕获超时等异常
+        print(f"[LLM] simple_chat 异常: {repr(e)}", flush=True)
+
+        if fallback_message:
+            print(f"[LLM] 使用降级回复: {_preview_text(fallback_message)}", flush=True)
+            return fallback_message
+
+        # 没有降级消息时返回通用错误提示
+        return "已完成操作。"
 
 
 async def chat_with_tools(

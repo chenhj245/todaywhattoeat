@@ -5,11 +5,16 @@
  */
 
 const API_BASE = 'http://127.0.0.1:8888';
+const CHAT_HISTORY_KEY = 'kitchenmind_chat_history';
 let isProcessing = false;
+let chatHistory = [];
+let lastSubmittedMessage = '';
+let lastSubmittedAt = 0;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('userInput');
+    loadChatHistory();
 
     // 自动调整文本框高度
     input.addEventListener('input', () => {
@@ -35,6 +40,15 @@ async function sendMessage() {
 
     if (!message || isProcessing) return;
 
+    const now = Date.now();
+    if (message === lastSubmittedMessage && now - lastSubmittedAt < 1500) {
+        console.warn('Duplicate message suppressed:', message);
+        return;
+    }
+
+    lastSubmittedMessage = message;
+    lastSubmittedAt = now;
+
     // 清空输入框
     input.value = '';
     input.style.height = 'auto';
@@ -50,6 +64,7 @@ async function sendMessage() {
  * 快速消息按钮
  */
 function sendQuickMessage(text) {
+    if (isProcessing) return;
     const input = document.getElementById('userInput');
     input.value = text;
     sendMessage();
@@ -103,38 +118,32 @@ async function sendStreamingMessage(message) {
                     const data = JSON.parse(line.slice(6));
 
                     if (data.type === 'intent') {
-                        // 显示意图识别结果（可选）
                         console.log('Intent:', data.content);
                     } else if (data.type === 'tool') {
-                        // 显示工具调用结果（可选）
                         console.log('Tool:', data.content);
-                        // 可以在界面上显示"正在添加食材..."等提示
                     } else if (data.type === 'message_chunk') {
-                        // 移除加载状态
                         if (contentEl.querySelector('.typing-indicator')) {
                             contentEl.innerHTML = '';
                         }
-                        // 追加消息片段
                         fullMessage += data.content;
                         contentEl.textContent = fullMessage;
+                        updateLastAssistantMessage(fullMessage);
                         scrollToBottom();
                     } else if (data.type === 'done') {
-                        // 完成
                         console.log('Stream complete');
                     } else if (data.type === 'error') {
-                        // 错误
                         contentEl.innerHTML = `<span class="error">❌ ${data.content}</span>`;
+                        updateLastAssistantMessage(`❌ ${data.content}`);
                     }
                 }
             }
         }
 
-        // 显示撤销按钮
         showUndoButton();
-
     } catch (error) {
         console.error('Stream error:', error);
         contentEl.innerHTML = `<span class="error">❌ 连接失败: ${error.message}</span>`;
+        updateLastAssistantMessage(`❌ 连接失败: ${error.message}`);
     } finally {
         isProcessing = false;
         updateSendButton(false);
@@ -172,16 +181,14 @@ async function sendNormalMessage(message) {
 
         const result = await response.json();
 
-        // 显示助手回复
         const reply = result.assistant_message || '已处理完成';
         contentEl.textContent = reply;
-
-        // 显示撤销按钮
+        updateLastAssistantMessage(reply);
         showUndoButton();
-
     } catch (error) {
         console.error('Request error:', error);
         contentEl.innerHTML = `<span class="error">❌ 请求失败: ${error.message}</span>`;
+        updateLastAssistantMessage(`❌ 请求失败: ${error.message}`);
     } finally {
         isProcessing = false;
         updateSendButton(false);
@@ -207,7 +214,6 @@ async function undoLastAction() {
         } else {
             addMessage('system', `❌ ${result.message}`);
         }
-
     } catch (error) {
         console.error('Undo error:', error);
         addMessage('system', `❌ 撤销失败: ${error.message}`);
@@ -222,8 +228,17 @@ async function undoLastAction() {
  * @returns {string} 消息元素 ID
  */
 function addMessage(role, content) {
+    const msgId = renderMessage(role, content);
+    chatHistory.push({ role, content });
+    saveChatHistory();
+    scrollToBottom();
+    return msgId;
+}
+
+function renderMessage(role, content) {
     const messageList = document.getElementById('messageList');
     const msgId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    clearWelcomeMessage();
 
     const messageDiv = document.createElement('div');
     messageDiv.id = msgId;
@@ -242,9 +257,52 @@ function addMessage(role, content) {
     }
 
     messageList.appendChild(messageDiv);
-    scrollToBottom();
-
     return msgId;
+}
+
+function clearWelcomeMessage() {
+    const welcome = document.querySelector('.welcome-message');
+    if (welcome) {
+        welcome.remove();
+    }
+}
+
+function saveChatHistory() {
+    sessionStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
+}
+
+function loadChatHistory() {
+    const raw = sessionStorage.getItem(CHAT_HISTORY_KEY);
+    if (!raw) return;
+
+    try {
+        const storedHistory = JSON.parse(raw);
+        if (!Array.isArray(storedHistory) || storedHistory.length === 0) return;
+
+        chatHistory = storedHistory;
+
+        const messageList = document.getElementById('messageList');
+        messageList.innerHTML = '';
+
+        for (const message of chatHistory) {
+            renderMessage(message.role, message.content);
+        }
+        scrollToBottom();
+    } catch (error) {
+        console.error('Load chat history error:', error);
+        sessionStorage.removeItem(CHAT_HISTORY_KEY);
+        chatHistory = [];
+    }
+}
+
+function updateLastAssistantMessage(content) {
+    for (let i = chatHistory.length - 1; i >= 0; i--) {
+        if (chatHistory[i].role === 'assistant') {
+            chatHistory[i].content = content;
+            saveChatHistory();
+            return;
+        }
+    }
 }
 
 /**

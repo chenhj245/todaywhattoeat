@@ -55,7 +55,7 @@ function renderKitchenState(data) {
 }
 
 /**
- * 渲染食材列表
+ * 渲染食材列表（简化版，移除调试信息）
  */
 function renderItems(containerId, countId, items, confidenceLevel) {
     const container = document.getElementById(containerId);
@@ -70,27 +70,24 @@ function renderItems(containerId, countId, items, confidenceLevel) {
 
     container.innerHTML = items.map(item => {
         const confidence = (item.effective_confidence * 100).toFixed(0);
-        const recommendNote = item.recommendation || '';
+
+        // 根据置信度决定卡片样式（通过左边框颜色隐性表达）
+        let confidenceClass = 'high';
+        if (confidence < 30) {
+            confidenceClass = 'low';
+        } else if (confidence < 70) {
+            confidenceClass = 'medium';
+        }
 
         return `
-            <div class="item-card ${confidenceLevel}">
+            <div class="item-card ${confidenceClass}">
                 <div class="item-header">
                     <span class="item-name">${item.name}</span>
                     <span class="item-category">${item.category}</span>
                 </div>
                 <div class="item-body">
                     <div class="item-quantity">${item.quantity_desc}</div>
-                    <div class="item-confidence">
-                        <div class="confidence-bar">
-                            <div class="confidence-fill" style="width: ${confidence}%"></div>
-                        </div>
-                        <span class="confidence-text">${confidence}%</span>
-                    </div>
-                </div>
-                ${recommendNote ? `<div class="item-note">${recommendNote}</div>` : ''}
-                <div class="item-footer">
                     <span class="item-time">${formatTime(item.last_mentioned_at)}</span>
-                    <span class="item-source">${formatSource(item.source)}</span>
                 </div>
             </div>
         `;
@@ -120,19 +117,6 @@ function formatTime(isoString) {
     } else {
         return date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
     }
-}
-
-/**
- * 格式化来源
- */
-function formatSource(source) {
-    const sourceMap = {
-        'user_input': '手动添加',
-        'conversation': '对话中提及',
-        'recipe': '菜谱消耗',
-        'auto_infer': '自动推断'
-    };
-    return sourceMap[source] || source;
 }
 
 /**

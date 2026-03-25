@@ -7,19 +7,37 @@ import os
 # 项目根目录
 PROJECT_ROOT = Path(__file__).parent
 
+
+def _load_env_file(env_path: Path):
+    """从项目根目录加载简单 .env 配置，不依赖额外库。"""
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+_load_env_file(PROJECT_ROOT / '.env')
+
 # 数据库配置
 DB_PATH = PROJECT_ROOT / "data" / "kitchenmind.db"
 
 # Ollama 配置
 OLLAMA_BASE_URL = "http://localhost:11434"
 OLLAMA_SMALL_MODEL = "qwen3.5:9b"  # 意图识别、参数提取
-OLLAMA_LARGE_MODEL = "qwen3.5:9b"  # 临时降级为 9b 以提升推荐响应速度和排障效率
+OLLAMA_LARGE_MODEL = "qwen3.5:35b"  # 复杂推荐与总结
 
 # LLM 提供方选择
 # auto: 优先 Ollama，失败后回退 Qwen
 # ollama: 仅使用本地 Ollama
 # qwen: 仅使用在线 Qwen
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "qwen")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "")
 
 # 云端备用 API（可选）
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
@@ -45,3 +63,4 @@ CONFIDENCE_MED = 0.3   # 中置信度，需要提示
 # Agent 配置
 MAX_SUGGESTIONS = 3  # 最多推荐菜品数
 DEFAULT_SERVING = 1  # 默认份数
+MIN_MATCH_RATE = 0.2  # 最低匹配度阈值（20%），低于此值不推荐

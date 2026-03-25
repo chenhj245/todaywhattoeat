@@ -126,6 +126,97 @@ async def restore_item(item_id: int):
         await db.commit()
 
 
+async def get_item_by_id(item_id: int) -> Optional[Dict]:
+    """根据 ID 获取食材（包括非活跃的）"""
+    async with get_db() as db:
+        cursor = await db.execute(
+            """
+            SELECT id, name, category, quantity_desc, quantity_num, unit,
+                   added_at, last_mentioned_at, confidence, source, is_active, meta
+            FROM kitchen_items
+            WHERE id = ?
+            """,
+            (item_id,)
+        )
+        row = await cursor.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "name": row[1],
+        "category": row[2],
+        "quantity_desc": row[3],
+        "quantity_num": row[4],
+        "unit": row[5],
+        "added_at": row[6],
+        "last_mentioned_at": row[7],
+        "confidence": row[8],
+        "source": row[9],
+        "is_active": row[10],
+        "meta": json.loads(row[11]) if row[11] else {}
+    }
+
+
+async def update_item_quantity(
+    item_id: int,
+    quantity_num: Optional[float] = None,
+    quantity_desc: Optional[str] = None
+):
+    """更新食材数量"""
+    now = datetime.now().isoformat()
+
+    async with get_db() as db:
+        if quantity_num is not None and quantity_desc is not None:
+            await db.execute(
+                """UPDATE kitchen_items
+                   SET quantity_num = ?, quantity_desc = ?, last_mentioned_at = ?
+                   WHERE id = ?""",
+                (quantity_num, quantity_desc, now, item_id)
+            )
+        elif quantity_num is not None:
+            await db.execute(
+                """UPDATE kitchen_items
+                   SET quantity_num = ?, last_mentioned_at = ?
+                   WHERE id = ?""",
+                (quantity_num, now, item_id)
+            )
+        elif quantity_desc is not None:
+            await db.execute(
+                """UPDATE kitchen_items
+                   SET quantity_desc = ?, last_mentioned_at = ?
+                   WHERE id = ?""",
+                (quantity_desc, now, item_id)
+            )
+        await db.commit()
+
+
+async def restore_item_from_snapshot(item_id: int, snapshot: Dict):
+    """从快照恢复食材完整状态"""
+    async with get_db() as db:
+        await db.execute(
+            """
+            UPDATE kitchen_items
+            SET quantity_num = ?,
+                quantity_desc = ?,
+                confidence = ?,
+                is_active = ?,
+                last_mentioned_at = ?
+            WHERE id = ?
+            """,
+            (
+                snapshot.get("quantity_num"),
+                snapshot.get("quantity_desc"),
+                snapshot.get("confidence"),
+                snapshot.get("is_active", 1),
+                snapshot.get("last_mentioned_at"),
+                item_id
+            )
+        )
+        await db.commit()
+
+
 # ========== Recipes 操作 ==========
 
 async def get_recipe_by_name(name: str) -> Optional[Dict]:

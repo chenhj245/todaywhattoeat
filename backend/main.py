@@ -31,6 +31,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 创建全局 Agent 实例（维护会话历史）
+kitchen_agent = agent.KitchenMindAgent()
+
 # CORS 配置（开发环境）
 app.add_middleware(
     CORSMiddleware,
@@ -88,6 +91,7 @@ async def root():
         "endpoints": {
             "chat": "POST /api/chat - 对话接口",
             "chat_stream": "POST /api/chat (stream=true) - 流式对话",
+            "chat_clear": "POST /api/chat/clear - 清空对话历史",
             "kitchen_state": "GET /api/kitchen/state - 厨房状态",
             "undo": "POST /api/kitchen/undo - 撤销操作",
             "shopping_list": "GET /api/shopping - 购物清单"
@@ -120,11 +124,11 @@ async def chat(message: ChatMessage):
             media_type="text/event-stream"
         )
     else:
-        # 非流式响应
+        # 非流式响应（使用全局 agent 实例维护历史）
         try:
-            result = await agent.process_message(message.message)
-            log_debug(f"[API] 非流式响应完成 intent={result.get('intent')} model={result.get('model_used')}")
-            return JSONResponse(content=result)
+            assistant_message = await kitchen_agent.chat(message.message)
+            log_debug(f"[API] 非流式响应完成 message={assistant_message[:100]}")
+            return JSONResponse(content={"assistant_message": assistant_message})
         except Exception as e:
             log_debug(f"[API] 非流式聊天请求失败 error={e}")
             raise HTTPException(status_code=500, detail=str(e))
@@ -149,8 +153,8 @@ async def chat_stream_generator(user_message: str):
         yield f"data: {json.dumps({'type': 'intent', 'content': intent}, ensure_ascii=False)}\n\n"
         await asyncio.sleep(0.01)  # 模拟流式效果
 
-        # 2. 处理消息
-        result = await agent.process_message(user_message)
+        # 2. 处理消息（使用全局 agent 实例维护历史和会话状态）
+        result = await kitchen_agent.process(user_message)
         log_debug(f"[API] SSE 处理完成 intent={result.get('intent')} model={result.get('model_used')} tool_count={len(result.get('tool_results', []))}")
 
         # 3. 发送工具调用结果
@@ -211,6 +215,21 @@ async def undo_last_action():
     try:
         result = await tools.undo_last_action()
         return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/chat/clear")
+async def clear_chat_history():
+    """
+    清空对话历史
+
+    用于重置会话上下文
+    """
+    try:
+        kitchen_agent.clear_history()
+        log_debug("[API] 对话历史已清空")
+        return JSONResponse(content={"success": True, "message": "对话历史已清空"})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
